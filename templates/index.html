@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 Controle Financeiro Pessoal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>💰 Controle Financeiro Pessoal</h1>
+        <p class="subtitulo">Gerencie suas receitas, despesas, renda e benefícios</p>
+    </header>
+
+    {% if request.args.get('erro') %}
+        <div class="alerta-erro">⚠️ {{ request.args.get('erro') }}</div>
+    {% endif %}
+
+    <!-- ====== DASHBOARD ====== -->
+    <section class="dashboard">
+        <div class="card receita">
+            <span class="label">Receitas</span>
+            <span class="valor">R$ {{ "%.2f"|format(total_receitas) }}</span>
+        </div>
+        <div class="card despesa">
+            <span class="label">Despesas</span>
+            <span class="valor">R$ {{ "%.2f"|format(total_despesas) }}</span>
+        </div>
+        <div class="card saldo {% if saldo < 0 %}negativo{% endif %}">
+            <span class="label">Saldo</span>
+            <span class="valor">R$ {{ "%.2f"|format(saldo) }}</span>
+        </div>
+    </section>
+
+    <!-- ====== MINHA RENDA MENSAL ====== -->
+    <section class="perfil">
+        <h2>💼 Minha Renda Mensal</h2>
+
+        <div class="renda-info">
+            <div class="info-box">
+                <span class="info-label">Renda mensal</span>
+                <span class="info-valor">R$ {{ "%.2f"|format(perfil.renda_mensal) }}</span>
+            </div>
+            <div class="info-box">
+                <span class="info-label">Dia do recebimento</span>
+                <span class="info-valor">Dia {{ perfil.dia_recebimento }}</span>
+            </div>
+            <div class="info-box destaque">
+                <span class="info-label">Total mensal previsto*</span>
+                <span class="info-valor">
+                    R$ {{ "%.2f"|format(renda_total_prevista) }}
+                </span>
+            </div>
+        </div>
+
+        {% if perfil.beneficios %}
+        <div class="beneficios-lista">
+            <h3>🎁 Benefícios cadastrados</h3>
+            <ul>
+                {% for b in perfil.beneficios %}
+                <li>
+                    <strong>{{ b.nome }}</strong>
+                    — R$ {{ "%.2f"|format(b.valor) }}
+                    <span class="tag-dia">todo dia {{ b.dia }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <p class="obs">*Total mensal previsto = renda + soma dos benefícios.</p>
+
+        <details class="config-perfil">
+            <summary>✏️ Configurar renda e benefícios</summary>
+
+            <form action="/perfil" method="POST" class="form-grid">
+                <input type="number" step="0.01" min="0"
+                       name="renda_mensal"
+                       placeholder="Renda mensal (R$)"
+                       value="{{ perfil.renda_mensal }}">
+
+                <input type="number" min="1" max="31"
+                       name="dia_recebimento"
+                       placeholder="Dia do recebimento"
+                       value="{{ perfil.dia_recebimento }}">
+
+                <div class="beneficios-full">
+                    <label class="rotulo">Benefícios (VR, VT, VA, etc.)</label>
+                    <div id="lista-beneficios">
+                        {% for b in perfil.beneficios %}
+                        <div class="beneficio-item">
+                            <input type="text" name="beneficio_nome[]"
+                                   placeholder="Nome" value="{{ b.nome }}">
+                            <input type="number" step="0.01" min="0"
+                                   name="beneficio_valor[]"
+                                   placeholder="Valor (R$)" value="{{ b.valor }}">
+                            <input type="number" min="1" max="31"
+                                   name="beneficio_dia[]"
+                                   placeholder="Dia" value="{{ b.dia }}">
+                            <button type="button" class="btn-remover"
+                                    onclick="this.parentElement.remove()">✖</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" class="btn-add-beneficio"
+                            onclick="adicionarBeneficio()">➕ Adicionar benefício</button>
+                </div>
+
+                <button type="submit">💾 Salvar renda e benefícios</button>
+            </form>
+        </details>
+    </section>
+
+    <!-- ====== FORMULÁRIO NOVA MOVIMENTAÇÃO ====== -->
+    <section class="form-section">
+        <h2>➕ Nova Movimentação</h2>
+        <form action="/adicionar" method="POST" class="form-grid">
+
+            <input type="text" name="descricao" placeholder="Descrição" required>
+
+            <input type="number" name="valor" placeholder="Valor (R$)"
+                   step="0.01" min="0.01" required>
+
+            <select name="tipo" required>
+                <option value="Receita">Receita</option>
+                <option value="Despesa" selected>Despesa</option>
+            </select>
+
+            <select name="categoria" id="select-categoria" required
+                    onchange="toggleOutros()">
+                <option value="Alimentação">Alimentação</option>
+                <option value="Transporte">Transporte</option>
+                <option value="Lazer">Lazer</option>
+                <option value="Educação">Educação</option>
+                <option value="Saúde">Saúde</option>
+                <option value="Outros" selected>Outros</option>
+            </select>
+
+            <input type="date" name="data" id="input-data" required>
+
+            <input type="time" name="hora" id="input-hora" required>
+
+            <!-- Campo que só aparece quando a categoria é "Outros" -->
+            <input type="text" name="outros_desc" id="input-outros"
+                   placeholder="Especifique o que foi (ex: Presente, Uber, etc.)"
+                   class="campo-outros">
+
+            <button type="submit">Adicionar</button>
+        </form>
+    </section>
+
+    <!-- ====== FILTROS ====== -->
+    <section class="filtros">
+        <h2>🔎 Filtros e Pesquisa</h2>
+        <form method="GET" action="/" class="form-grid">
+            <input type="text" name="busca" placeholder="Pesquisar por descrição"
+                   value="{{ busca }}">
+            <input type="date" name="data_inicio" value="{{ data_inicio }}">
+            <input type="date" name="data_fim" value="{{ data_fim }}">
+            <button type="submit">Filtrar</button>
+            <a href="/exportar" class="btn-exportar">⬇️ Exportar CSV</a>
+        </form>
+    </section>
+
+    <!-- ====== GRÁFICO ====== -->
+    {% if total_despesas > 0 %}
+    <section class="grafico">
+        <h2>📊 Despesas por Categoria</h2>
+        {% for cat, valor in categorias_totais.items() %}
+            {% if valor > 0 %}
+                <div class="barra-linha">
+                    <span class="barra-nome">{{ cat }}</span>
+                    <div class="barra-fundo">
+                        <div class="barra-preenchida"
+                             style="width: {{ (valor / total_despesas * 100) | round(1) }}%"></div>
+                    </div>
+                    <span class="barra-valor">R$ {{ "%.2f"|format(valor) }}</span>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- ====== LISTA ====== -->
+    <section class="lista">
+        <h2>📋 Movimentações</h2>
+
+        {% if movimentacoes %}
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data / Hora</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movimentacoes %}
+                    <tr>
+                        <td class="celula-data">
+                            <span>{{ m.data }}</span>
+                            <small>{{ m.hora }}</small>
+                        </td>
+                        <td>{{ m.descricao }}</td>
+                        <td>
+                            {{ m.categoria }}
+                            {% if m.categoria == "Outros" and m.outros_desc %}
+                                <br><small class="outros-desc">{{ m.outros_desc }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="tag {% if m.tipo == 'Receita' %}tag-receita{% else %}tag-despesa{% endif %}">
+                                {{ m.tipo }}
+                            </span>
+                        </td>
+                        <td class="{% if m.tipo == 'Receita' %}txt-receita{% else %}txt-despesa{% endif %}">
+                            R$ {{ "%.2f"|format(m.valor) }}
+                        </td>
+                        <td>
+                            <a href="/excluir/{{ m.id }}" class="btn-excluir"
+                               onclick="return confirm('Deseja realmente excluir?');">🗑️</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="vazio">Nenhuma movimentação encontrada.</p>
+        {% endif %}
+    </section>
+
+    <footer>
+        <p>Desenvolvido com Flask + Python 🐍</p>
+    </footer>
+
+</div>
+
+<!-- ============================================================
+     JavaScript: preenche hora atual + controla campo "Outros"
+     ============================================================ -->
+<script>
+    // 1) Preenche a data e a hora atuais ao abrir a página
+    window.addEventListener("DOMContentLoaded", () => {
+        const inputData = document.getElementById("input-data");
+        const inputHora = document.getElementById("input-hora");
+
+        if (!inputData.value) {
+            const hoje = new Date();
+            const yyyy = hoje.getFullYear();
+            const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+            const dd = String(hoje.getDate()).padStart(2, "0");
+            inputData.value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        if (!inputHora.value) {
+            const agora = new Date();
+            const hh = String(agora.getHours()).padStart(2, "0");
+            const mi = String(agora.getMinutes()).padStart(2, "0");
+            inputHora.value = `${hh}:${mi}`;
+        }
+
+        toggleOutros(); // ajusta o campo "Outros" no carregamento
+    });
+
+    // 2) Mostra / esconde o campo "Especifique" quando a categoria é Outros
+    function toggleOutros() {
+        const select = document.getElementById("select-categoria");
+        const campo = document.getElementById("input-outros");
+        if (select.value === "Outros") {
+            campo.style.display = "block";
+            campo.required = true;
+        } else {
+            campo.style.display = "none";
+            campo.required = false;
+            campo.value = "";
+        }
+    }
+
+    // 3) Adiciona dinamicamente uma linha de benefício no formulário
+    function adicionarBeneficio() {
+        const container = document.getElementById("lista-beneficios");
+        const div = document.createElement("div");
+        div.className = "beneficio-item";
+        div.innerHTML = `
+            <input type="text" name="beneficio_nome[]" placeholder="Nome (ex: VR)">
+            <input type="number" step="0.01" min="0" name="beneficio_valor[]"
+                   placeholder="Valor (R$)">
+            <input type="number" min="1" max="31" name="beneficio_dia[]"
+                   placeholder="Dia">
+            <button type="button" class="btn-remover"
+                    onclick="this.parentElement.remove()">✖</button>
+        `;
+        container.appendChild(div);
+    }
+</script>
+
+</body>
+</html>

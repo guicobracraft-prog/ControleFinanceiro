@@ -1,0 +1,251 @@
+/* ============================================================
+   style.css - Controle Financeiro (tema escuro) - v2
+   ============================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.container { max-width: 1100px; margin: 0 auto; }
+
+/* Cabeçalho */
+header { text-align: center; margin-bottom: 30px; }
+header h1 { font-size: 2rem; color: #38bdf8; margin-bottom: 5px; }
+.subtitulo { color: #94a3b8; font-size: 0.95rem; }
+
+/* Alerta */
+.alerta-erro {
+    background: #7f1d1d; color: #fecaca;
+    padding: 12px 16px; border-radius: 8px;
+    margin-bottom: 20px; border-left: 4px solid #ef4444;
+}
+
+/* Dashboard */
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px; margin-bottom: 30px;
+}
+.card {
+    background: #1e293b; border-radius: 12px; padding: 20px;
+    display: flex; flex-direction: column; gap: 8px;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.card .label {
+    font-size: 0.9rem; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 1px;
+}
+.card .valor { font-size: 1.6rem; font-weight: bold; }
+.card.receita { border-left: 5px solid #22c55e; }
+.card.receita .valor { color: #22c55e; }
+.card.despesa { border-left: 5px solid #ef4444; }
+.card.despesa .valor { color: #ef4444; }
+.card.saldo { border-left: 5px solid #38bdf8; }
+.card.saldo .valor { color: #38bdf8; }
+.card.saldo.negativo { border-left-color: #f97316; }
+.card.saldo.negativo .valor { color: #f97316; }
+
+/* Seções */
+section {
+    background: #1e293b; border-radius: 12px; padding: 20px;
+    margin-bottom: 25px; border: 1px solid #334155;
+}
+section h2 { margin-bottom: 15px; color: #38bdf8; font-size: 1.2rem; }
+
+/* Formulários */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+input, select, button {
+    padding: 12px; border-radius: 8px; border: 1px solid #334155;
+    background: #0f172a; color: #e2e8f0;
+    font-size: 0.95rem; width: 100%; transition: 0.2s;
+}
+input:focus, select:focus {
+    outline: none; border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+button {
+    background: #38bdf8; color: #0f172a;
+    font-weight: bold; cursor: pointer; border: none;
+}
+button:hover { background: #0ea5e9; transform: translateY(-1px); }
+
+.btn-exportar {
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px; border-radius: 8px;
+    background: #16a34a; color: white;
+    text-decoration: none; font-weight: bold; transition: 0.2s;
+}
+.btn-exportar:hover { background: #15803d; }
+
+/* Campo "Outros" (só aparece quando categoria = Outros) */
+.campo-outros {
+    grid-column: 1 / -1;
+    border: 1px dashed #f97316;
+    background: #1e293b;
+}
+
+/* ---------- Seção de Perfil (renda e benefícios) ---------- */
+.perfil .renda-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 15px;
+}
+.info-box {
+    background: #0f172a; border-radius: 10px; padding: 14px;
+    display: flex; flex-direction: column; gap: 4px;
+    border-left: 4px solid #64748b;
+}
+.info-box .info-label {
+    font-size: 0.8rem; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 1px;
+}
+.info-box .info-valor { font-size: 1.2rem; font-weight: bold; color: #e2e8f0; }
+.info-box.destaque {
+    border-left-color: #22c55e;
+    background: linear-gradient(135deg, #0f172a, #14532d22);
+}
+.info-box.destaque .info-valor { color: #22c55e; }
+
+.beneficios-lista {
+    margin-top: 10px;
+    background: #0f172a; padding: 14px; border-radius: 10px;
+}
+.beneficios-lista h3 { color: #38bdf8; margin-bottom: 8px; font-size: 1rem; }
+.beneficios-lista ul { list-style: none; }
+.beneficios-lista li {
+    padding: 8px 0; border-bottom: 1px dashed #334155;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.beneficios-lista li:last-child { border-bottom: none; }
+.tag-dia {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;
+}
+.obs { color: #94a3b8; font-size: 0.8rem; margin-top: 10px; }
+
+/* Configurar perfil (details/summary) */
+.config-perfil { margin-top: 15px; }
+.config-perfil summary {
+    cursor: pointer; color: #38bdf8;
+    padding: 10px; border-radius: 8px;
+    background: #0f172a; font-weight: bold;
+    transition: 0.2s; user-select: none;
+}
+.config-perfil summary:hover { background: #1e293b; }
+.config-perfil[open] summary { margin-bottom: 15px; }
+
+.rotulo {
+    font-size: 0.85rem; color: #94a3b8;
+    margin-bottom: 6px; display: block;
+}
+.beneficios-full { grid-column: 1 / -1; }
+
+.beneficio-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr 0.7fr auto;
+    gap: 8px; margin-bottom: 8px; align-items: center;
+}
+.beneficio-item input { font-size: 0.9rem; padding: 10px; }
+.btn-remover {
+    background: #ef4444; color: white; border: none;
+    border-radius: 8px; padding: 10px 14px; cursor: pointer;
+    font-weight: bold; width: auto;
+}
+.btn-remover:hover { background: #dc2626; }
+
+.btn-add-beneficio {
+    background: #334155; color: #e2e8f0;
+    margin-top: 6px; padding: 10px;
+    border: 1px dashed #64748b; width: auto;
+}
+.btn-add-beneficio:hover { background: #475569; }
+
+/* Gráfico */
+.barra-linha {
+    display: grid;
+    grid-template-columns: 110px 1fr 110px;
+    align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.barra-nome { font-size: 0.9rem; color: #cbd5e1; }
+.barra-fundo {
+    background: #0f172a; border-radius: 6px;
+    height: 20px; overflow: hidden;
+}
+.barra-preenchida {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #f97316);
+    border-radius: 6px; transition: width 0.5s ease;
+}
+.barra-valor { font-size: 0.85rem; text-align: right; color: #f97316; }
+
+/* Tabela */
+.tabela-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+th {
+    color: #94a3b8; font-size: 0.85rem;
+    text-transform: uppercase; letter-spacing: 1px;
+}
+tbody tr:hover { background: #0f172a; }
+
+.celula-data { line-height: 1.3; }
+.celula-data small { color: #94a3b8; font-size: 0.8rem; }
+
+.outros-desc {
+    color: #f97316; font-size: 0.8rem; font-style: italic;
+}
+
+/* Tags */
+.tag { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+.tag-receita { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.tag-despesa { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.txt-receita { color: #22c55e; font-weight: bold; }
+.txt-despesa { color: #ef4444; font-weight: bold; }
+
+.btn-excluir { text-decoration: none; font-size: 1.1rem; transition: 0.2s; }
+.btn-excluir:hover { transform: scale(1.2); }
+
+.vazio { text-align: center; color: #94a3b8; padding: 20px; }
+
+footer {
+    text-align: center; color: #64748b; font-size: 0.85rem;
+    margin-top: 30px; padding: 20px;
+}
+
+/* Responsividade */
+@media (max-width: 700px) {
+    body { padding: 12px; }
+    header h1 { font-size: 1.5rem; }
+    .dashboard { grid-template-columns: 1fr; }
+    .card .valor { font-size: 1.4rem; }
+    section { padding: 15px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .barra-linha { grid-template-columns: 90px 1fr; }
+    .barra-valor { grid-column: 2; text-align: left; font-size: 0.8rem; }
+
+    /* Benefício em coluna no celular */
+    .beneficio-item {
+        grid-template-columns: 1fr 1fr;
+    }
+    .beneficio-item .btn-remover {
+        grid-column: 1 / -1;
+    }
+}
