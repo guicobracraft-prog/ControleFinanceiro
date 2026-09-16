@@ -1,11 +1,14 @@
 # ============================================================
-# app.py - Servidor Flask do Controle Financeiro (v2)
+# app.py - Servidor Flask do Controle Financeiro (v3 FINAL)
 # ============================================================
-# NOVIDADES desta versão:
-#   • Campo "hora" em cada movimentação
-#   • Campo "outros_desc" quando a categoria é "Outros"
-#   • Arquivo perfil.json para guardar renda mensal e benefícios
-#   • Rota /perfil para salvar esses dados
+# Funcionalidades:
+#   • Movimentações com descrição, valor, tipo, data, hora e categoria
+#   • Campo extra "Especifique" quando categoria = Outros
+#   • Renda mensal + dia de recebimento + benefícios
+#   • Cálculo de dias até o próximo recebimento
+#   • Gráfico comparativo renda prevista × despesas reais
+#   • Alerta de saldo negativo
+#   • Filtros, pesquisa e exportação CSV
 # ============================================================
 
 from flask import Flask, render_template, request, redirect, url_for, send_file
@@ -13,15 +16,14 @@ import json
 import os
 import csv
 import io
-from datetime import datetime
+import calendar
+from datetime import datetime, date
 
 app = Flask(__name__)
 
-# Nomes dos arquivos (nosso "banco de dados")
 ARQUIVO_DADOS = "dados.json"
 ARQUIVO_PERFIL = "perfil.json"
 
-# Categorias disponíveis
 CATEGORIAS = ["Alimentação", "Transporte", "Lazer", "Educação", "Saúde", "Outros"]
 
 
@@ -49,18 +51,17 @@ def salvar_dados(movimentacoes):
 # FUNÇÕES AUXILIARES — perfil.json
 # ============================================================
 def carregar_perfil():
-    """Lê o perfil (renda + benefícios). Se não existir, retorna padrão."""
+    """Lê o perfil (renda + benefícios). Cria padrão se não existir."""
     padrao = {
         "renda_mensal": 0.0,
         "dia_recebimento": 1,
-        "beneficios": []   # lista de {"nome": ..., "valor": ..., "dia": ...}
+        "beneficios": []
     }
     if not os.path.exists(ARQUIVO_PERFIL):
         return padrao
     try:
         with open(ARQUIVO_PERFIL, "r", encoding="utf-8") as f:
             perfil = json.load(f)
-            # Garante que todas as chaves existem
             for chave, valor in padrao.items():
                 perfil.setdefault(chave, valor)
             return perfil
@@ -75,14 +76,39 @@ def salvar_perfil(perfil):
 
 
 # ============================================================
-# ROTA PRINCIPAL — página inicial
+# FUNÇÃO AUXILIAR — próximo recebimento
+# ============================================================
+def calcular_proximo_recebimento(hoje, dia):
+    """
+    Retorna a próxima data em que o usuário vai receber.
+    Trata meses curtos (ex: dia 31 em fevereiro → 28 ou 29).
+    """
+    ano, mes = hoje.year, hoje.month
+
+    ultimo_dia_mes = calendar.monthrange(ano, mes)[1]
+    dia_ajustado = min(dia, ultimo_dia_mes)
+
+    if dia_ajustado >= hoje.day:
+        return date(ano, mes, dia_ajustado)
+
+    mes += 1
+    if mes > 12:
+        mes = 1
+        ano += 1
+
+    ultimo_dia_mes = calendar.monthrange(ano, mes)[1]
+    return date(ano, mes, min(dia, ultimo_dia_mes))
+
+
+# ============================================================
+# ROTA PRINCIPAL
 # ============================================================
 @app.route("/")
 def index():
     movimentacoes = carregar_dados()
     perfil = carregar_perfil()
 
-    # ----- Filtros (pesquisa + intervalo de datas) -----
+    # ----- Filtros -----
     busca = request.args.get("busca", "").strip().lower()
     data_inicio = request.args.get("data_inicio", "")
     data_fim = request.args.get("data_fim", "")
@@ -102,15 +128,29 @@ def index():
     total_despesas = sum(m["valor"] for m in filtradas if m["tipo"] == "Despesa")
     saldo = total_receitas - total_despesas
 
-    # ----- Totais por categoria (para o gráfico) -----
+    # ----- Totais por categoria -----
     categorias_totais = {cat: 0 for cat in CATEGORIAS}
     for m in filtradas:
         if m["tipo"] == "Despesa":
             categorias_totais[m.get("categoria", "Outros")] += m["valor"]
 
-    # ----- Cálculo da renda mensal prevista (renda + benefícios) -----
+    # ----- Renda prevista -----
     total_beneficios = sum(b["valor"] for b in perfil["beneficios"])
     renda_total_prevista = perfil["renda_mensal"] + total_beneficios
+
+    # ----- Dias até o próximo recebimento -----
+    hoje = date.today()
+    dia_rec = perfil.get("dia_recebimento", 1)
+    proximo_recebimento = calcular_proximo_recebimento(hoje, dia_rec)
+    dias_ate_receber = (proximo_recebimento - hoje).days
+
+    # ----- Comparativo renda × despesas -----
+    if renda_total_prevista > 0:
+        percentual_despesas = round((total_despesas / renda_total_prevista) * 100, 1)
+    else:
+        percentual_despesas = 0.0
+
+    sobra_prevista = renda_total_prevista - total_despesas
 
     return render_template(
         "index.html",
@@ -128,6 +168,10 @@ def index():
         perfil=perfil,
         total_beneficios=total_beneficios,
         renda_total_prevista=renda_total_prevista,
+        proximo_recebimento=proximo_recebimento,
+        dias_ate_receber=dias_ate_receber,
+        percentual_despesas=percentual_despesas,
+        sobra_prevista=sobra_prevista,
     )
 
 
@@ -144,7 +188,6 @@ def adicionar():
     categoria = request.form.get("categoria", "Outros").strip()
     outros_desc = request.form.get("outros_desc", "").strip()
 
-    # ----- Validações -----
     if not descricao or not valor_str or not tipo or not data:
         return redirect(url_for("index", erro="Preencha todos os campos obrigatórios!"))
 
@@ -159,12 +202,10 @@ def adicionar():
     if tipo not in ["Receita", "Despesa"]:
         return redirect(url_for("index", erro="Tipo inválido!"))
 
-    # Se escolheu "Outros", exige uma descrição complementar
     if categoria == "Outros" and not outros_desc:
         return redirect(url_for("index",
                                 erro="Especifique o que foi a movimentação 'Outros'!"))
 
-    # Se NÃO for Outros, limpamos o campo
     if categoria != "Outros":
         outros_desc = ""
 
@@ -186,7 +227,7 @@ def adicionar():
 
 
 # ============================================================
-# ROTA — salvar perfil (renda mensal + benefícios)
+# ROTA — salvar perfil (renda + benefícios)
 # ============================================================
 @app.route("/perfil", methods=["POST"])
 def atualizar_perfil():
@@ -207,7 +248,6 @@ def atualizar_perfil():
     except ValueError:
         dia = 1
 
-    # Benefícios são enviados como listas paralelas
     nomes = request.form.getlist("beneficio_nome[]")
     valores = request.form.getlist("beneficio_valor[]")
     dias = request.form.getlist("beneficio_dia[]")
@@ -283,4 +323,4 @@ def exportar():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True) 

@@ -15,6 +15,18 @@
         <p class="subtitulo">Gerencie suas receitas, despesas, renda e benefícios</p>
     </header>
 
+    <!-- ====== 🔔 ALERTA DE SALDO NEGATIVO ====== -->
+    {% if saldo < 0 %}
+        <div class="alerta-saldo-negativo">
+            <span class="icone-alerta">🚨</span>
+            <div>
+                <strong>Atenção! Seu saldo está negativo.</strong>
+                <p>Você está gastando mais do que ganha. Saldo atual:
+                   <strong>R$ {{ "%.2f"|format(saldo) }}</strong></p>
+            </div>
+        </div>
+    {% endif %}
+
     {% if request.args.get('erro') %}
         <div class="alerta-erro">⚠️ {{ request.args.get('erro') }}</div>
     {% endif %}
@@ -35,7 +47,7 @@
         </div>
     </section>
 
-    <!-- ====== MINHA RENDA MENSAL ====== -->
+    <!-- ====== 💼 MINHA RENDA MENSAL ====== -->
     <section class="perfil">
         <h2>💼 Minha Renda Mensal</h2>
 
@@ -52,6 +64,22 @@
                 <span class="info-label">Total mensal previsto*</span>
                 <span class="info-valor">
                     R$ {{ "%.2f"|format(renda_total_prevista) }}
+                </span>
+            </div>
+            <!-- 📅 Contador regressivo -->
+            <div class="info-box contador">
+                <span class="info-label">⏳ Próximo recebimento</span>
+                <span class="info-valor">
+                    {{ proximo_recebimento.strftime("%d/%m/%Y") }}
+                </span>
+                <span class="info-extra">
+                    {% if dias_ate_receber == 0 %}
+                        🎉 É hoje!
+                    {% elif dias_ate_receber == 1 %}
+                        Falta 1 dia
+                    {% else %}
+                        Faltam {{ dias_ate_receber }} dias
+                    {% endif %}
                 </span>
             </div>
         </div>
@@ -115,7 +143,7 @@
         </details>
     </section>
 
-    <!-- ====== FORMULÁRIO NOVA MOVIMENTAÇÃO ====== -->
+    <!-- ====== ➕ NOVA MOVIMENTAÇÃO ====== -->
     <section class="form-section">
         <h2>➕ Nova Movimentação</h2>
         <form action="/adicionar" method="POST" class="form-grid">
@@ -144,7 +172,6 @@
 
             <input type="time" name="hora" id="input-hora" required>
 
-            <!-- Campo que só aparece quando a categoria é "Outros" -->
             <input type="text" name="outros_desc" id="input-outros"
                    placeholder="Especifique o que foi (ex: Presente, Uber, etc.)"
                    class="campo-outros">
@@ -153,7 +180,7 @@
         </form>
     </section>
 
-    <!-- ====== FILTROS ====== -->
+    <!-- ====== 🔎 FILTROS ====== -->
     <section class="filtros">
         <h2>🔎 Filtros e Pesquisa</h2>
         <form method="GET" action="/" class="form-grid">
@@ -166,7 +193,7 @@
         </form>
     </section>
 
-    <!-- ====== GRÁFICO ====== -->
+    <!-- ====== 📊 DESPESAS POR CATEGORIA ====== -->
     {% if total_despesas > 0 %}
     <section class="grafico">
         <h2>📊 Despesas por Categoria</h2>
@@ -185,7 +212,54 @@
     </section>
     {% endif %}
 
-    <!-- ====== LISTA ====== -->
+    <!-- ====== 📈 RENDA PREVISTA × DESPESAS REAIS ====== -->
+    {% if renda_total_prevista > 0 or total_despesas > 0 %}
+    <section class="grafico comparativo">
+        <h2>📈 Renda Prevista × Despesas Reais</h2>
+
+        <div class="barra-linha">
+            <span class="barra-nome">💼 Renda prevista</span>
+            <div class="barra-fundo">
+                <div class="barra-preenchida barra-receita"
+                     style="width: 100%"></div>
+            </div>
+            <span class="barra-valor txt-receita">
+                R$ {{ "%.2f"|format(renda_total_prevista) }}
+            </span>
+        </div>
+
+        <div class="barra-linha">
+            <span class="barra-nome">💸 Despesas reais</span>
+            <div class="barra-fundo">
+                <div class="barra-preenchida barra-despesa"
+                     style="width: {{ percentual_despesas if percentual_despesas <= 100 else 100 }}%"></div>
+            </div>
+            <span class="barra-valor txt-despesa">
+                R$ {{ "%.2f"|format(total_despesas) }}
+            </span>
+        </div>
+
+        <div class="resumo-comparativo">
+            {% if sobra_prevista >= 0 %}
+                <p class="positivo">
+                    ✅ Você ainda tem
+                    <strong>R$ {{ "%.2f"|format(sobra_prevista) }}</strong>
+                    de sobra este mês
+                    ({{ (100 - percentual_despesas) | round(1) }}% da renda).
+                </p>
+            {% else %}
+                <p class="negativo">
+                    ⚠️ Você já gastou
+                    <strong>R$ {{ "%.2f"|format(-sobra_prevista) }}</strong>
+                    a mais do que ganha
+                    ({{ percentual_despesas }}% da renda comprometida).
+                </p>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ====== 📋 LISTA DE MOVIMENTAÇÕES ====== -->
     <section class="lista">
         <h2>📋 Movimentações</h2>
 
@@ -245,10 +319,9 @@
 </div>
 
 <!-- ============================================================
-     JavaScript: preenche hora atual + controla campo "Outros"
+     JavaScript
      ============================================================ -->
 <script>
-    // 1) Preenche a data e a hora atuais ao abrir a página
     window.addEventListener("DOMContentLoaded", () => {
         const inputData = document.getElementById("input-data");
         const inputHora = document.getElementById("input-hora");
@@ -268,10 +341,9 @@
             inputHora.value = `${hh}:${mi}`;
         }
 
-        toggleOutros(); // ajusta o campo "Outros" no carregamento
+        toggleOutros();
     });
 
-    // 2) Mostra / esconde o campo "Especifique" quando a categoria é Outros
     function toggleOutros() {
         const select = document.getElementById("select-categoria");
         const campo = document.getElementById("input-outros");
@@ -285,7 +357,6 @@
         }
     }
 
-    // 3) Adiciona dinamicamente uma linha de benefício no formulário
     function adicionarBeneficio() {
         const container = document.getElementById("lista-beneficios");
         const div = document.createElement("div");
