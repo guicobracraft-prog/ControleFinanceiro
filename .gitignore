@@ -35,6 +35,7 @@ ENV/
 .env
 .venv*/
 venv*/
+venv
 
 # ---------- 🔐 Variáveis de Ambiente ----------
 .env
@@ -50,8 +51,6 @@ flask_session/
 # ---------- 💾 DADOS DO USUÁRIO (importante!) ----------
 # Esses arquivos contêm dados pessoais/financeiros.
 # NÃO devem ir para o GitHub!
-dados.json
-perfil.json
 *.csv
 
 # ---------- 🧪 Testes e Cobertura ----------
